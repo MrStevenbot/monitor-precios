@@ -1,6 +1,10 @@
+import subprocess
+import sys
+subprocess.check_call([sys.executable
 import requests
 import json
 import time
+                       
 import schedule
 import os
 from datetime import datetime
