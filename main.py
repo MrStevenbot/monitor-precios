@@ -1,6 +1,6 @@
 import subprocess
 import sys
-subprocess.check_call([sys.executable
+subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "schedule"])
 import requests
 import json
 import time
