@@ -1,10 +1,10 @@
 import subprocess
 import sys
 subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "schedule"])
+
 import requests
 import json
 import time
-                       
 import schedule
 import os
 from datetime import datetime
@@ -20,22 +20,89 @@ UMBRAL_ERROR = 40
 
 # Palabras clave a monitorear en MercadoLibre Chile
 BUSQUEDAS = [
+    # Tecnología
     "notebook",
     "smartphone",
     "televisor",
     "tablet",
+    "iphone",
+    "samsung galaxy",
+    "consola videojuegos",
+    "camara fotografica",
+    "auriculares",
+    "smartwatch",
+    "parlante bluetooth",
+    "drone",
+    "Mando Play 5",
+    # Electrohogar
+    "refrigerador",
+    "lavadora",
+    "microondas",
+    "aire acondicionado",
+    "aspiradora",
+    "cafetera",
+    "Freidora de Aire",
+    # Deportes
+    "bicicleta",
+    "bicicleta electrica",
+    "zapatillas running",
+    "zapatillas nike",
+    "zapatillas adidas",
+    "trotadora",
+    "pesas",
+    # Ropa y moda
+    "chaqueta",
+    "poleron",
+    "jeans",
+    "vestido",
+    "ropa deportiva",
+    # Perfumes y belleza
+    "perfume hombre",
+    "Armaf",
+    "Rasasi",
+    "perfume mujer",
+    "crema facial",
+    "maquillaje",
+    # Hogar y muebles
+    "sofa",
+    "escritorio",
+    "silla gamer",
+    "colchon",
+    "lampara",
+    # Herramientas
+    "taladro",
+    "set herramientas",
+    # Juguetes
+    "lego",
+    "juguete niños",
+    # Mascotas
+    "alimento perro",
+    "juguetes perros",
+    "alimento gato",
+    # Autos y motos
+    "accesorios auto",
+
 ]
 # ─────────────────────────────────────────────────────────────
 
 
-def enviar_telegram(mensaje):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": mensaje,
-        "parse_mode": "HTML"
-    }
+def enviar_telegram(mensaje, foto_url=None):
     try:
+        if foto_url:
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
+            payload = {
+                "chat_id": CHAT_ID,
+                "photo": foto_url,
+                "caption": mensaje,
+                "parse_mode": "HTML"
+            }
+        else:
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": CHAT_ID,
+                "text": mensaje,
+                "parse_mode": "HTML"
+            }
         response = requests.post(url, json=payload, timeout=10)
         return response.status_code == 200
     except Exception as e:
@@ -55,7 +122,7 @@ def guardar_historial(historial):
         json.dump(historial, f, indent=2, ensure_ascii=False)
 
 
-def buscar_mercadolibre(query, limite=10):
+def buscar_mercadolibre(query, limite=50):
     url = "https://api.mercadolibre.com/sites/MLC/search"
     params = {
         "q": query,
@@ -86,6 +153,7 @@ def analizar_productos(productos, historial, query):
         precio_actual = producto.get("price", 0)
         precio_original = producto.get("original_price") or precio_actual
         link = producto.get("permalink", "")
+        foto_url = producto.get("thumbnail", "").replace("I.jpg", "O.jpg")
         vendedor = producto.get("seller", {}).get("nickname", "Desconocido")
 
         # Calcular descuento del vendedor (precio original vs actual)
@@ -106,17 +174,17 @@ def analizar_productos(productos, historial, query):
         if descuento_vendedor >= UMBRAL_ERROR or variacion_historica >= UMBRAL_ERROR:
             tipo = "🚨 POSIBLE ERROR DE PRECIO"
             porcentaje = max(descuento_vendedor, variacion_historica)
-            alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor))
+            alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor, foto_url))
 
         elif descuento_vendedor >= UMBRAL_OFERTA or variacion_historica >= UMBRAL_OFERTA:
             tipo = "🔥 OFERTA DETECTADA"
             porcentaje = max(descuento_vendedor, variacion_historica)
-            alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor))
+            alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor, foto_url))
 
     return alertas, historial
 
 
-def formatear_alerta(tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor):
+def formatear_alerta(tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor, foto_url=None):
     precio_actual_fmt = f"${precio_actual:,.0f} CLP"
     precio_original_fmt = f"${precio_original:,.0f} CLP"
 
@@ -149,7 +217,7 @@ def ejecutar_monitoreo():
 
         for alerta in alertas:
             mensaje = formatear_alerta(*alerta)
-            enviado = enviar_telegram(mensaje)
+            enviado = enviar_telegram(mensaje, foto_url=alerta[7] if len(alerta) > 7 else None)
             if enviado:
                 print(f"  ✅ Alerta enviada: {alerta[1][:50]}...")
                 total_alertas += 1
