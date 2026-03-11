@@ -288,46 +288,7 @@ def buscar_sodimac(query):
     except Exception as e:
         print(f"Error Sodimac ({query}): {e}")
         return []
-
-
-# ─── HITES ───────────────────────────────────────────────────
-def buscar_hites(query):
-    url = f'https://www.hites.com/search?q={query}&sort=price-asc&hitsPerPage=50'
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(response.text, 'lxml')
-        resultados = []
-        productos = soup.select('[class*="product"]')[:50]
-        for p in productos:
-            titulo_el = p.select_one('[class*="name"]') or p.select_one('[class*="title"]')
-            precio_el = p.select_one('[class*="price-special"]') or p.select_one('[class*="price"]')
-            link_el = p.select_one('a')
-            img_el = p.select_one('img')
-            if not titulo_el or not precio_el:
-                continue
-            titulo = titulo_el.get_text(strip=True)
-            precio_str = precio_el.get_text(strip=True).replace('$', '').replace('.', '').replace(',', '')
-            try:
-                precio_actual = float(''.join(filter(str.isdigit, precio_str)))
-            except:
-                continue
-            if not precio_actual:
-                continue
-            link = 'https://www.hites.com' + link_el['href'] if link_el and link_el.get('href') else ''
-            imagen = img_el.get('src', '') if img_el else ''
-            resultados.append({
-                'id': 'hit_' + titulo[:30].replace(' ', '_'),
-                'title': titulo,
-                'price': precio_actual,
-                'original_price': precio_actual,
-                'permalink': link,
-                'thumbnail': imagen,
-                'tienda': 'Hites.cl'
-            })
-        return resultados
-    except Exception as e:
-        print(f"Error Hites ({query}): {e}")
-        return []
+        
 
 
 # ─── LA POLAR ────────────────────────────────────────────────
