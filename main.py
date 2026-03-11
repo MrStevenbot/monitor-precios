@@ -1,6 +1,6 @@
 import subprocess
 import sys
-subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "schedule"])
+subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "schedule", "beautifulsoup4", "lxml"])
 
 import requests
 import json
@@ -33,7 +33,6 @@ BUSQUEDAS = [
     "smartwatch",
     "parlante bluetooth",
     "drone",
-    "Mando Play 5",
     # Electrohogar
     "refrigerador",
     "lavadora",
@@ -41,7 +40,6 @@ BUSQUEDAS = [
     "aire acondicionado",
     "aspiradora",
     "cafetera",
-    "Freidora de Aire",
     # Deportes
     "bicicleta",
     "bicicleta electrica",
@@ -58,8 +56,6 @@ BUSQUEDAS = [
     "ropa deportiva",
     # Perfumes y belleza
     "perfume hombre",
-    "Armaf",
-    "Rasasi",
     "perfume mujer",
     "crema facial",
     "maquillaje",
@@ -77,11 +73,10 @@ BUSQUEDAS = [
     "juguete niños",
     # Mascotas
     "alimento perro",
-    "juguetes perros",
     "alimento gato",
     # Autos y motos
     "accesorios auto",
-
+    "casco moto",
 ]
 # ─────────────────────────────────────────────────────────────
 
@@ -172,12 +167,12 @@ def analizar_productos(productos, historial, query):
 
         # Detectar alertas
         if descuento_vendedor >= UMBRAL_ERROR or variacion_historica >= UMBRAL_ERROR:
-            tipo = "🚨 POSIBLE ERROR DE PRECIO"
+            tipo = '🚨 POSIBLE ERROR DE PRECIO\n🏪 Tienda: ' + tienda
             porcentaje = max(descuento_vendedor, variacion_historica)
             alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor, foto_url))
 
         elif descuento_vendedor >= UMBRAL_OFERTA or variacion_historica >= UMBRAL_OFERTA:
-            tipo = "🔥 OFERTA DETECTADA"
+            tipo = '🔥 OFERTA DETECTADA\n🏪 Tienda: ' + tienda
             porcentaje = max(descuento_vendedor, variacion_historica)
             alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, vendedor, foto_url))
 
@@ -200,6 +195,79 @@ def formatear_alerta(tipo, titulo, precio_actual, precio_original, porcentaje, l
     return mensaje
 
 
+
+# ─── MÓDULO RIPLEY ───────────────────────────────────────────
+BUSQUEDAS_RIPLEY = [
+    'notebook', 'smartphone', 'televisor', 'tablet',
+    'refrigerador', 'lavadora', 'aire acondicionado',
+    'zapatillas', 'bicicleta', 'perfume',
+]
+
+def buscar_ripley(query):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Referer': 'https://simple.ripley.cl/',
+    }
+    url = f'https://simple.ripley.cl/api/2.0/page/search/?query={query}&page=1&perPage=50'
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        data = response.json()
+        productos = data.get('results', [])
+        resultados = []
+        for p in productos:
+            precio_actual = p.get('prices', {}).get('normalPrice', 0)
+            precio_original = p.get('prices', {}).get('originalPrice') or precio_actual
+            if not precio_actual:
+                continue
+            resultados.append({
+                'id': 'ripley_' + str(p.get('partNumber', '')),
+                'title': p.get('displayName', 'Sin título'),
+                'price': float(precio_actual),
+                'original_price': float(precio_original),
+                'permalink': 'https://simple.ripley.cl' + p.get('url', ''),
+                'thumbnail': p.get('image', ''),
+                'tienda': 'Ripley.cl'
+            })
+        return resultados
+    except Exception as e:
+        print(f'Error consultando Ripley ({query}): {e}')
+        return []
+
+
+def analizar_productos_ripley(productos, historial):
+    alertas = []
+    for producto in productos:
+        item_id = producto['id']
+        titulo = producto['title']
+        precio_actual = producto['price']
+        precio_original = producto['original_price']
+        link = producto['permalink']
+        foto_url = producto['thumbnail']
+        tienda = producto['tienda']
+
+        descuento_vendedor = calcular_variacion(precio_actual, precio_original)
+        precio_anterior = historial.get(item_id, {}).get('precio', 0)
+        variacion_historica = calcular_variacion(precio_actual, precio_anterior) if precio_anterior > 0 else 0
+
+        historial[item_id] = {
+            'precio': precio_actual,
+            'titulo': titulo,
+            'ultima_vez': datetime.now().isoformat()
+        }
+
+        if descuento_vendedor >= UMBRAL_ERROR or variacion_historica >= UMBRAL_ERROR:
+            tipo = '🚨 POSIBLE ERROR DE PRECIO\n🏪 Tienda: ' + tienda
+            porcentaje = max(descuento_vendedor, variacion_historica)
+            alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, tienda, foto_url))
+
+        elif descuento_vendedor >= UMBRAL_OFERTA or variacion_historica >= UMBRAL_OFERTA:
+            tipo = '🔥 OFERTA DETECTADA\n🏪 Tienda: ' + tienda
+            porcentaje = max(descuento_vendedor, variacion_historica)
+            alertas.append((tipo, titulo, precio_actual, precio_original, porcentaje, link, tienda, foto_url))
+
+    return alertas, historial
+# ─────────────────────────────────────────────────────────────
 def ejecutar_monitoreo():
     print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Iniciando monitoreo...")
     historial = cargar_historial()
