@@ -41,6 +41,8 @@ BUSQUEDAS = [
     "alimento perro", "alimento gato", "accesorios auto", "casco moto",
 ]
 
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
+
 @bot_telebot.message_handler(commands=['ofertas'])
 def cmd_ofertas(message):
     historial = cargar_historial()
