@@ -579,6 +579,8 @@ def cmd_start(message):
         parse_mode='HTML'
     )
 
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
+
 @bot_telebot.message_handler(commands=['estado'])
 def cmd_estado(message):
     global BOT_PAUSADO, ULTIMO_ESCANEO
@@ -596,6 +598,8 @@ def cmd_estado(message):
         f"⚙️ Umbral error: {UMBRAL_ERROR}%",
         parse_mode='HTML'
     )
+
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 @bot_telebot.message_handler(commands=['buscar'])
 def cmd_buscar(message):
@@ -617,7 +621,7 @@ def cmd_buscar(message):
     guardar_historial(historial)
     if total == 0:
         bot_telebot.reply_to(message, f"Sin ofertas para <b>{query}</b> en este momento.", parse_mode='HTML')
-
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
 @bot_telebot.message_handler(commands=['umbral'])
 def cmd_umbral(message):
     global UMBRAL_OFERTA
@@ -634,6 +638,8 @@ def cmd_umbral(message):
         bot_telebot.reply_to(message, f"✅ Umbral oferta: {UMBRAL_OFERTA}%\n🚨 Error de precio sigue en: {UMBRAL_ERROR}%")
     except:
         bot_telebot.reply_to(message, "Número inválido. Ejemplo: /umbral 15")
+
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 @bot_telebot.message_handler(commands=['error'])
 def cmd_error(message):
@@ -652,17 +658,23 @@ def cmd_error(message):
     except:
         bot_telebot.reply_to(message, "Número inválido. Ejemplo: /error 50")
 
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
+
 @bot_telebot.message_handler(commands=['pausa'])
 def cmd_pausa(message):
     global BOT_PAUSADO
     BOT_PAUSADO = True
     bot_telebot.reply_to(message, "⏸ Bot pausado.\nUsa /activar para reanudar.")
 
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
+
 @bot_telebot.message_handler(commands=['activar'])
 def cmd_activar(message):
     global BOT_PAUSADO
     BOT_PAUSADO = False
     bot_telebot.reply_to(message, "▶️ Bot reactivado. Alertas automáticas activas.")
+
+bot_telebot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 @bot_telebot.message_handler(commands=['ofertas'])
 def cmd_ofertas(message):
@@ -736,7 +748,7 @@ def main():
     hilo_comandos.start()
 
     enviar_telegram(
-        "🤖 <b>Captador de Ofertas Chile activo</b>\n\n"
+        "🤖🤑 <b>Captador de Ofertas Chile activo</b>\n\n"
         "🏪 Tiendas: MercadoLibre, Ripley, Falabella\n"
         "📦 +1.500 artículos monitoreados\n"
         "🔄 Revisión cada 30 minutos\n\n"
